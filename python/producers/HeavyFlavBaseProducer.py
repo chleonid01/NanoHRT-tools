@@ -218,6 +218,8 @@ class HeavyFlavBaseProducer(Module, object):
             self.out.branch(prefix + "ParticleNetMD_XbbVsQCD", "F")
             self.out.branch(prefix + "ParticleNetMD_XccVsQCD", "F")
             self.out.branch(prefix + "ParticleNetMD_XccOrXqqVsQCD", "F")
+             # custom tagger 
+            self.out.branch(prefix + "ParticleNetMD_TvsWQCD", "F")
 
             if self._opts['run_tagger']:
                 self.out.branch(prefix + "origParticleNetMD_XccVsQCD", "F")
@@ -334,6 +336,45 @@ class HeavyFlavBaseProducer(Module, object):
                 event.looseLeptons.append(mu)
 
         event.looseLeptons.sort(key=lambda x: x.pt, reverse=True)
+    
+    def selectedLepton(self, event):
+        if self.year == 2016:
+            elePtCut = 28
+            muPtCut = 26
+        else if self.year == 2017:
+            elePtCut = 35
+            muPtCut = 28
+        else:
+            elePtCut = 35
+            muPtCut = 26
+        event.lepton_Sel = []
+        event.Electron_Sel = []
+        electrons = Collection(event, "Electron")
+        for el in electrons:
+            if el.pt > elePtCut and abs(el.eta) < 2.1 and el.mvaFall17V2Iso_WP90 and el.mvaFall17V2Iso < 0.20:
+                event.Electron_Sel.append(el)
+                event.lepton_Sel.append(el)
+        event.Muon_Sel = []
+        muons = Collection(event, "Muon")
+        for mu in muons:
+            if mu.pt > muPtCut and abs(mu.eta) < 2.4 and and abs(mu.sip3d) < 10.0 and mu.mediumId and mu.miniPFRelIso_all < 0.20:
+                event.Muon_Sel.append(mu)
+                event.lepton_Sel.append(mu)
+    
+    def selectedVetoLepton(self, event):
+        # do veto lepton selection
+        event.vetoLepton = []  # used for jet lepton cleaning & lepton counting
+
+        electrons = Collection(event, "Electron")
+        for el in electrons:
+            el.etaSC = el.eta + el.deltaEtaSC
+            if el.pt > 10 and abs(el.eta) < 2.5 and el.mvaFall17V2noIso_WP90 and el.mvaFall17V2noIso < 0.25:
+                event.vetoLepton.append(el)
+
+        muons = Collection(event, "Muon")
+        for mu in muons:
+            if mu.pt > 10 and abs(mu.eta) < 2.4 and mu.looseId and mu.miniPFRelIso_all < 0.25:
+                event.vetoLeptons.append(mu)
 
     def correctJetsAndMET(self, event):
         # correct Jets and MET
@@ -543,6 +584,10 @@ class HeavyFlavBaseProducer(Module, object):
             j.pn_XbbVsQCD = convert_prob(j, ['Xbb'], ['QCD'], prefix='pn_')
             j.pn_XccVsQCD = convert_prob(j, ['Xcc'], ['QCD'], prefix='pn_')
             j.pn_XccOrXqqVsQCD = convert_prob(j, ['Xcc', 'Xqq'], ['QCD'], prefix='pn_')
+            # inclusive QCD + Wh list
+            WQCDi = ['QCDbb', 'QCDb', 'QCDcc', 'QCDc', 'QCDothers', 'Wcq', 'Wqq']
+            # custom tagger
+            j.pn_TVsWQCD = conver_prob(j, ['Tbcq', 'Tbqq'], WQCDi, prefix='pn_')
 
     def evalMassRegression(self, event, jets):
         for j in jets:
@@ -703,6 +748,9 @@ class HeavyFlavBaseProducer(Module, object):
             self.out.fillBranch(prefix + "ParticleNetMD_XbbVsQCD", fj.pn_XbbVsQCD)
             self.out.fillBranch(prefix + "ParticleNetMD_XccVsQCD", fj.pn_XccVsQCD)
             self.out.fillBranch(prefix + "ParticleNetMD_XccOrXqqVsQCD", fj.pn_XccOrXqqVsQCD)
+
+            # custom tagger
+            self.out.fillBranch(prefix + "ParticleNetMD_TvsWQCD", fj.pn_TVsWQCD)
 
             if self._opts['run_tagger']:
                 self.out.fillBranch(prefix + "origParticleNetMD_XccVsQCD",
