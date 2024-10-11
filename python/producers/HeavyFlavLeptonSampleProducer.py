@@ -14,7 +14,8 @@ class LeptonSampleProducer(HeavyFlavBaseProducer):
         super(LeptonSampleProducer, self).beginFile(inputFile, outputFile, inputTree, wrappedOutputTree)
 
         # trigger variables
-        self.out.branch("passLeptonTrig", "O")
+        self.out.branch("passTrigEl", "O")
+        self.out.branch("passTrigMu", "O")
 
         # event variables
         self.out.branch("lepton_pt", "F")
@@ -31,22 +32,27 @@ class LeptonSampleProducer(HeavyFlavBaseProducer):
         
         # veto loose leptons (exactly one lepton is passing because is the selected lepton)
         self.selectedVetoLepton(event)
-        if len(event.vetoLepton) !=1:
+        if len(event.vetoLeptons) !=1:
             return False
 
         self.selectLeptons(event)
         self.correctJetsAndMET(event)
 
         # Zero b-jet, passing medium WP
-        event.bjets = [j for j in event.ak4jets if j.btagDeepFlavB > self.DeepJet_WP_M and deltaR(j,event.lepton_Sel[0]) > 0.4]
+        event.bjets = [j for j in event.ak4jets if j.btagDeepFlavB > self.DeepJet_WP_M and j.pt > 30 and abs(j.eta) < 2.4 and deltaR(j,event.lepton_Sel[0]) > 0.4]
         if len(event.bjets) > 0:
             return False
 
+        event.jets = [j for j in event.ak4jets if j.pt > 30 and abs(j.eta) < 2.4 and (j.jetId & 2) and deltaR(j,event.lepton_Sel[0]) > 0.4 
+            and deltaR(j,event.lepton_Sel[0]) > 0.4]
         
         # require fatjet away from the lepton dR(fj, lept.) > 0.8
         probe_jets = [fj for fj in event.fatjets if deltaR(fj,event.lepton_Sel[0]) > 0.8]
         if len(probe_jets) == 0:
             return False
+        
+        # require atleast one jet 
+
 
         probe_jets = probe_jets[:1]
         self.loadGenHistory(event, probe_jets)
@@ -67,6 +73,7 @@ class LeptonSampleProducer(HeavyFlavBaseProducer):
         elif self.year == 2018:
             self.out.fillBranch("passTrigEl", passTrigger(event, 'HLT_Ele32_WPTight_Gsf'))
             self.out.fillBranch("passTrigMu", passTrigger(event, 'HLT_IsoMu24'))
+        
         self.out.fillBranch("lepton_pt", event.lepton_Sel[0].pt)
         self.out.fillBranch("lepton_eta", event.lepton_Sel[0].eta)
         

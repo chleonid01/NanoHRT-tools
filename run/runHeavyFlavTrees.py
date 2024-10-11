@@ -14,11 +14,12 @@ default_config = {'sfbdt_threshold': -99,
                   'run_mass_regression': False, 'mass_regression_versions': ['V01a', 'V01b', 'V01c'],
                   'jec': False, 'jes': None, 'jes_source': '', 'jes_uncertainty_file_prefix': '',
                   'jer': 'nominal', 'jmr': None, 'met_unclustered': None, 'smearMET': False, 'applyHEMUnc': False}
-
+# if el.pt > elePtCut and abs(el.eta) < 2.1 and el.mvaFall17V2Iso_WP90 and el.mvaFall17V2Iso < 0.20 and el.sip3d < 10.0:
 cut_dict_ak8 = {
     'photon': 'Sum$(Photon_pt>200 && Photon_cutBased>=2 && Photon_electronVeto)>0 && nFatJet>0',
     'qcd': 'Sum$((Jet_pt>25 && abs(Jet_eta)<2.4 && (Jet_jetId & 2)) * Jet_pt)>200 && nFatJet>0',
     'muon': 'Sum$(Muon_pt>55 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_miniPFRelIso_all<0.10)>0 && nFatJet>0',
+    'lepton': 'Sum$((Muon_pt>26 && abs(Muon_eta)<2.4 && Muon_mediumId && Muon_miniPFRelIso_all<0.20 && Muon_sip3d<10)>0 || (Electron_pt>35 && abs(Electron_eta)<2.5) && Electron_mvaFall17V2Iso_WP90 && Electron_mvaFall17V2Iso<0.20 && Electron_sip3d<10)>0 && nFatJet>0 && nJet>0',
     'diboson': '(Sum$(Electron_pt>20 && abs(Electron_eta)<2.5 && abs(Electron_dxy)<0.05 && abs(Electron_dz)<0.2 && Electron_mvaFall17V2noIso_WP90 && Electron_miniPFRelIso_all<0.4) >= 2 ||'
                ' Sum$(Muon_pt>20 && abs(Muon_eta)<2.4 && abs(Muon_dxy)<0.05 && abs(Muon_dz)<0.2 && Muon_looseId && Muon_miniPFRelIso_all<0.4) >= 2) && nFatJet>0',
     'inclusive': 'Sum$((Jet_pt>25 && abs(Jet_eta)<2.4 && (Jet_jetId & 2)) * Jet_pt)>300 && Sum$(FatJet_subJetIdx1>=0 && FatJet_subJetIdx2>=0 && FatJet_msoftdrop>10)>0',
@@ -27,6 +28,7 @@ cut_dict_ak15 = {
     'photon': 'Sum$(Photon_pt>200 && Photon_cutBased>=2 && Photon_electronVeto)>0 && nAK15Puppi>0',
     'qcd': 'Sum$((Jet_pt>25 && abs(Jet_eta)<2.4 && (Jet_jetId & 2)) * Jet_pt)>200 && nAK15Puppi>0',
     'muon': 'Sum$(Muon_pt>55 && abs(Muon_eta)<2.4 && Muon_tightId && Muon_miniPFRelIso_all<0.10)>0 && nAK15Puppi>0',
+    'lepton': 'Sum$((Muon_pt>26 && abs(Muon_eta)<2.4 && Muon_mediumId && Muon_miniPFRelIso_all<0.20 && Muon_sip3d<10)>0 || (Electron_pt>35 && abs(Electron_eta)<2.5) && Electron_mvaFall17V2Iso_WP90 && Electron_mvaFall17V2Iso<0.20 && Electron_sip3d<10)>0 && nFatJet>0 && nJet>0',
     'diboson': '(Sum$(Electron_pt>20 && abs(Electron_eta)<2.5 && abs(Electron_dxy)<0.05 && abs(Electron_dz)<0.2 && Electron_mvaFall17V2noIso_WP90 && Electron_miniPFRelIso_all<0.4) >= 2 ||'
                ' Sum$(Muon_pt>20 && abs(Muon_eta)<2.4 && abs(Muon_dxy)<0.05 && abs(Muon_dz)<0.2 && Muon_looseId && Muon_miniPFRelIso_all<0.4) >= 2) && nAK15Puppi>0',
     'inclusive': 'Sum$((Jet_pt>25 && abs(Jet_eta)<2.4 && (Jet_jetId & 2)) * Jet_pt)>300 && Sum$(AK15Puppi_subJetIdx1>=0 && AK15Puppi_subJetIdx2>=0 && AK15Puppi_msoftdrop>10)>0',
@@ -133,6 +135,17 @@ def _process(args):
 
         # MET unclustEn up/down
         if args.channel == 'muon':
+            for variation in ['up', 'down']:
+                syst_name = 'met_%s' % variation
+                logging.info('Start making %s trees...' % syst_name)
+                opts = copy.deepcopy(args)
+                cfg = copy.deepcopy(default_config)
+                cfg['met_unclustered'] = variation
+                opts.outputdir = os.path.join(os.path.dirname(opts.outputdir), syst_name)
+                opts.jobdir = os.path.join(os.path.dirname(opts.jobdir), syst_name)
+                run(opts, configs={hrt_cfgname: cfg})
+         # MET unclustEn up/down
+        if args.channel == 'lepton':
             for variation in ['up', 'down']:
                 syst_name = 'met_%s' % variation
                 logging.info('Start making %s trees...' % syst_name)
