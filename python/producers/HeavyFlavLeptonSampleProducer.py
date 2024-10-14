@@ -39,19 +39,20 @@ class LeptonSampleProducer(HeavyFlavBaseProducer):
         self.correctJetsAndMET(event)
 
         # Zero b-jet, passing medium WP
-        event.bjets = [j for j in event.ak4jets if j.btagDeepFlavB > self.DeepJet_WP_M and j.pt > 30 and abs(j.eta) < 2.4 and deltaR(j,event.lepton_Sel[0]) > 0.4]
-        if len(event.bjets) > 0:
+        event.Mbjets = [j for j in event.ak4jets if j.btagDeepFlavB > self.DeepJet_WP_M and j.pt > 30 and abs(j.eta) < 2.4 and deltaR(j,event.lepton_Sel[0]) > 0.4]
+        if len(event.Mbjets) > 0:
             return False
-
-        event.jets = [j for j in event.ak4jets if j.pt > 30 and abs(j.eta) < 2.4 and (j.jetId & 2) and deltaR(j,event.lepton_Sel[0]) > 0.4 
-            and deltaR(j,event.lepton_Sel[0]) > 0.4]
         
-        # require fatjet away from the lepton dR(fj, lept.) > 0.8
-        probe_jets = [fj for fj in event.fatjets if deltaR(fj,event.lepton_Sel[0]) > 0.8]
+        # require fatjet away from the muon
+        probe_jets = [fj for fj in event.fatjets if abs(deltaPhi(fj, event.lepton_Sel[0])) > 2]
         if len(probe_jets) == 0:
             return False
-        
-        # require atleast one jet 
+
+        # at least one Loose b-jet, in the same hemisphere of the lepton
+        event.bjets = [j for j in event.ak4jets if j.btagDeepFlavB > self.DeepJet_WP_L and
+                       abs(deltaPhi(j, event.lepton_Sel[0])) < 2]
+        if len(event.bjets) == 0:
+            return False
 
 
         probe_jets = probe_jets[:1]
